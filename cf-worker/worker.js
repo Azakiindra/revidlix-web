@@ -343,10 +343,6 @@ export default {
       "Sec-Fetch-Site": "same-origin",
     };
 
-    // Forward real client IP so z2.idlixku.com viewer session binds to user IP, not Worker edge IP
-    const clientIP = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For");
-    if (clientIP) fwdHeaders["X-Forwarded-For"] = clientIP;
-
     const ct = request.headers.get("Content-Type");
     if (ct) fwdHeaders["Content-Type"] = ct;
 
