@@ -15,12 +15,14 @@ import {
 const Z2_BASE = "https://z2.idlixku.com";
 const MP_BASE = "https://e2e.majorplay.net";
 
-// CF_PROXY_URL = e.g. "https://my-worker.workers.dev"
-// Set as NEXT_PUBLIC_CF_PROXY_URL in Vercel environment variables
+const DEFAULT_WORKER_URL = "https://revidlix-proxy.azaki3697.workers.dev";
+
+// CF_PROXY_URL = e.g. "https://revidlix-proxy.azaki3697.workers.dev"
+// Set as NEXT_PUBLIC_CF_PROXY_URL in Vercel environment variables or use default
 const CF_PROXY =
   typeof window !== "undefined"
-    ? (process.env.NEXT_PUBLIC_CF_PROXY_URL || "").replace(/\/$/, "")
-    : "";
+    ? (process.env.NEXT_PUBLIC_CF_PROXY_URL || DEFAULT_WORKER_URL).replace(/\/$/, "")
+    : DEFAULT_WORKER_URL;
 
 function toProxy(url: string): string {
   if (CF_PROXY) {

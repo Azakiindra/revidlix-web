@@ -16,9 +16,10 @@ import {
 const Z2_BASE = "https://z2.idlixku.com";
 const MP_BASE = "https://e2e.majorplay.net";
 
-// If CF_PROXY_URL is set (e.g. https://my-worker.workers.dev),
-// route all z2/mp requests through the Cloudflare Worker
-const CF_PROXY = (process.env.CF_PROXY_URL || "").replace(/\/$/, "");
+const DEFAULT_WORKER_URL = "https://revidlix-proxy.azaki3697.workers.dev";
+
+// If CF_PROXY_URL is set or fallback to default Cloudflare Worker
+const CF_PROXY = (process.env.CF_PROXY_URL || DEFAULT_WORKER_URL).replace(/\/$/, "");
 
 function toProxyUrl(url: string): string {
   if (CF_PROXY) {
