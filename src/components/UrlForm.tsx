@@ -48,29 +48,29 @@ export const UrlForm: React.FC<UrlFormProps> = ({ onSubmitUrl, isLoading }) => {
   };
 
   return (
-    <div className="w-full glass-panel rounded-2xl p-6 mb-8 border border-slate-800">
+    <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
       {/* Mode Tabs */}
-      <div className="flex flex-wrap items-center gap-2 mb-6 p-1.5 bg-slate-950/80 rounded-xl border border-slate-800">
+      <div className="flex items-center gap-1.5 mb-5 p-1 bg-zinc-950 rounded-lg border border-zinc-800/80 w-fit">
         <button
           type="button"
           onClick={() => { setInputMode("url"); setUrlInput(""); }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition ${
             inputMode === "url"
-              ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow"
-              : "text-slate-400 hover:text-slate-200"
+              ? "bg-zinc-800 text-zinc-100 border border-zinc-700/60"
+              : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
           <Link2 className="w-3.5 h-3.5" />
-          <span>IDLIX URL / Slug</span>
+          <span>URL / Slug</span>
         </button>
 
         <button
           type="button"
           onClick={() => { setInputMode("token"); setUrlInput(""); }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition ${
             inputMode === "token"
-              ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow"
-              : "text-slate-400 hover:text-slate-200"
+              ? "bg-zinc-800 text-zinc-100 border border-zinc-700/60"
+              : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
           <Key className="w-3.5 h-3.5" />
@@ -80,43 +80,40 @@ export const UrlForm: React.FC<UrlFormProps> = ({ onSubmitUrl, isLoading }) => {
         <button
           type="button"
           onClick={() => { setInputMode("m3u8"); setUrlInput(""); }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition ${
             inputMode === "m3u8"
-              ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow"
-              : "text-slate-400 hover:text-slate-200"
+              ? "bg-zinc-800 text-zinc-100 border border-zinc-700/60"
+              : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
           <Radio className="w-3.5 h-3.5" />
-          <span>Direct MajorPlay M3U8</span>
+          <span>Direct M3U8</span>
         </button>
       </div>
 
       <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            {inputMode === "url" && <Link2 className="w-4 h-4 text-cyan-400" />}
-            {inputMode === "token" && <Key className="w-4 h-4 text-purple-400" />}
-            {inputMode === "m3u8" && <Radio className="w-4 h-4 text-emerald-400" />}
-            {inputMode === "url" && "Masukkan URL IDLIX atau Content Slug:"}
-            {inputMode === "token" && "Masukkan GateToken (dari Browser DevTools):"}
-            {inputMode === "m3u8" && "Masukkan Direct Stream M3U8 URL (majorplay.net):"}
+          <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            {inputMode === "url" && "Masukkan URL / Slug IDLIX:"}
+            {inputMode === "token" && "Masukkan Manual GateToken:"}
+            {inputMode === "m3u8" && "Masukkan Direct M3U8 Stream URL:"}
           </label>
 
           {parsed && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-mono text-cyan-300">
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-xs font-mono text-indigo-300">
               {parsed.contentType === "episode" ? (
                 <>
-                  <Tv className="w-3.5 h-3.5 text-purple-400" />
+                  <Tv className="w-3 h-3 text-indigo-400" />
                   <span>Series: {parsed.slug} (S{parsed.season}E{parsed.episode})</span>
                 </>
               ) : parsed.contentType === "series" ? (
                 <>
-                  <Tv className="w-3.5 h-3.5 text-purple-400" />
+                  <Tv className="w-3 h-3 text-indigo-400" />
                   <span>Series: {parsed.slug}</span>
                 </>
               ) : (
                 <>
-                  <Film className="w-3.5 h-3.5 text-blue-400" />
+                  <Film className="w-3 h-3 text-indigo-400" />
                   <span>Movie: {parsed.slug}</span>
                 </>
               )}
@@ -124,7 +121,7 @@ export const UrlForm: React.FC<UrlFormProps> = ({ onSubmitUrl, isLoading }) => {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
             <input
               type="text"
@@ -134,11 +131,11 @@ export const UrlForm: React.FC<UrlFormProps> = ({ onSubmitUrl, isLoading }) => {
                 inputMode === "url"
                   ? "https://z2.idlixku.com/movie/the-conjuring-2013"
                   : inputMode === "token"
-                  ? "Paste gateToken dari DevTools..."
+                  ? "Tempel gateToken dari DevTools..."
                   : "https://e2e.majorplay.net/v/.../master.m3u8"
               }
               disabled={isLoading}
-              className="w-full bg-slate-950/80 border border-slate-700/80 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-xl px-4 py-3.5 text-slate-100 text-sm placeholder:text-slate-500 transition duration-200 disabled:opacity-50 pr-10"
+              className="w-full bg-zinc-950 border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3.5 py-2.5 text-zinc-100 text-sm placeholder:text-zinc-600 transition disabled:opacity-50"
             />
           </div>
 
@@ -146,22 +143,22 @@ export const UrlForm: React.FC<UrlFormProps> = ({ onSubmitUrl, isLoading }) => {
             type="button"
             onClick={handlePaste}
             disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium transition duration-200 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-200 text-sm font-medium transition disabled:opacity-50"
           >
-            <Clipboard className="w-4 h-4 text-cyan-400" />
+            <Clipboard className="w-4 h-4 text-zinc-400" />
             <span>Paste</span>
           </button>
 
           <button
             type="submit"
             disabled={!urlInput.trim() || isLoading}
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-sm font-semibold shadow-lg shadow-cyan-500/25 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                <span>Resolve Stream</span>
+                <span>Resolve</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -170,40 +167,40 @@ export const UrlForm: React.FC<UrlFormProps> = ({ onSubmitUrl, isLoading }) => {
 
         {/* Info & Helper Snippet */}
         {inputMode === "token" && (
-          <div className="mt-2 p-3 rounded-xl bg-purple-950/30 border border-purple-500/20 text-xs text-purple-200 flex items-center justify-between gap-3">
+          <div className="mt-1 p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Info className="w-4 h-4 text-purple-400 shrink-0" />
+              <Info className="w-4 h-4 text-indigo-400 shrink-0" />
               <span>
-                Buka DevTools Console (F12) saat menonton IDLIX, lalu jalankan helper snippet ini untuk menyalin `gateToken`:
+                Jalankan snippet ini di DevTools Console (F12) saat menonton IDLIX untuk menyalin `gateToken`:
               </span>
             </div>
             <button
               type="button"
               onClick={copyDevToolsSnippet}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 font-mono shrink-0 transition"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-mono text-xs shrink-0 transition"
             >
               {copiedSnippet ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedSnippet ? "Copied!" : "Copy Helper"}</span>
+              <span>{copiedSnippet ? "Copied" : "Copy Snippet"}</span>
             </button>
           </div>
         )}
 
         {inputMode === "url" && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80 text-xs text-slate-400">
-            <span className="text-slate-500">Contoh Cepat:</span>
+          <div className="flex items-center gap-2 pt-2 border-t border-zinc-800/60 text-xs text-zinc-500">
+            <span>Contoh:</span>
             <button
               type="button"
               onClick={() => handleSample("the-conjuring-2013")}
-              className="px-2.5 py-1 rounded-md bg-slate-800/60 hover:bg-slate-700/80 text-slate-300 transition"
+              className="px-2 py-0.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition font-mono"
             >
-              Movie: the-conjuring-2013
+              the-conjuring-2013
             </button>
             <button
               type="button"
               onClick={() => handleSample("stranger-things/season/1/episode/1")}
-              className="px-2.5 py-1 rounded-md bg-slate-800/60 hover:bg-slate-700/80 text-slate-300 transition"
+              className="px-2 py-0.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition font-mono"
             >
-              Episode: S1E1
+              stranger-things S1E1
             </button>
           </div>
         )}

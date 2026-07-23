@@ -8,7 +8,7 @@ import { StreamDetails } from "@/components/StreamDetails";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Downloader } from "@/components/Downloader";
 import { StreamDataResult, StreamVariant } from "@/lib/idlix-gate";
-import { AlertCircle, Film, Sparkles, ShieldAlert, Key, Terminal } from "lucide-react";
+import { AlertCircle, Film, ShieldAlert, Key, Terminal } from "lucide-react";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -87,52 +87,49 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       <Header />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pb-16">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 pb-16">
         {/* URL Form Component */}
         <UrlForm onSubmitUrl={handleResolveUrl} isLoading={isLoading} />
 
         {/* Loading / Gate Protocol Progress */}
         {isLoading && <GateCountdown currentStep={step} stepMessage={stepMessage} />}
 
-        {/* Error Alert with Cloudflare Guidance */}
+        {/* Error Alert with Guidance */}
         {error && (
-          <div className="w-full p-5 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-300 flex flex-col gap-3 mb-8 shadow-lg shadow-rose-500/10">
+          <div className="w-full p-4 rounded-xl bg-zinc-900 border border-rose-500/40 text-rose-300 flex flex-col gap-3 mb-6">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-sm text-rose-200">Gagal Mengurai Stream IDLIX</h4>
+                <h4 className="font-semibold text-sm text-rose-200">Gagal Mengurai Stream IDLIX</h4>
                 <p className="text-xs text-rose-300/80 mt-0.5">{error}</p>
               </div>
             </div>
 
             {isCloudflareError && (
-              <div className="mt-2 pt-3 border-t border-rose-500/20 text-xs text-slate-300">
+              <div className="mt-1 pt-3 border-t border-rose-500/20 text-xs text-zinc-300">
                 <div className="flex items-center gap-1.5 font-semibold text-amber-300 mb-2">
                   <ShieldAlert className="w-4 h-4 text-amber-400" />
-                  <span>Cloudflare Protection Aktif di z2.idlixku.com</span>
+                  <span>Petunjuk Penanganan:</span>
                 </div>
-                <p className="mb-3 text-slate-300">
-                  Cloudflare memblokir permintaan server-side tanpa TLS fingerprint Chromium. Anda dapat menggunakan salah satu dari 2 solusi ini:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="font-bold text-purple-300 flex items-center gap-1.5 mb-1">
-                      <Key className="w-3.5 h-3.5" /> 1. Mode Manual GateToken
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
+                    <span className="font-semibold text-zinc-200 flex items-center gap-1.5 mb-1 text-xs">
+                      <Key className="w-3.5 h-3.5 text-indigo-400" /> Mode Manual GateToken
                     </span>
-                    <p className="text-slate-400 text-[11px]">
-                      Pilih tab &quot;Manual GateToken&quot; di atas, lalu masukkan <code className="text-purple-300">gateToken</code> yang disalin dari DevTools browser saat membuka IDLIX.
+                    <p className="text-zinc-400 text-[11px]">
+                      Gunakan tab &quot;Manual GateToken&quot; pada form di atas, lalu tempel <code className="text-indigo-300">gateToken</code> dari DevTools browser.
                     </p>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="font-bold text-cyan-300 flex items-center gap-1.5 mb-1">
-                      <Terminal className="w-3.5 h-3.5" /> 2. Jalankan Stealth Go Service
+                  <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
+                    <span className="font-semibold text-zinc-200 flex items-center gap-1.5 mb-1 text-xs">
+                      <Terminal className="w-3.5 h-3.5 text-indigo-400" /> Cek URL
                     </span>
-                    <p className="text-slate-400 text-[11px]">
-                      Jalankan Stealth microservice di <code className="text-cyan-300">http://localhost:8191</code> agar Cloudflare dapat di-bypass secara otomatis.
+                    <p className="text-zinc-400 text-[11px]">
+                      Pastikan URL film/series valid atau coba tempel langsung link stream `.m3u8` di tab Direct M3U8.
                     </p>
                   </div>
                 </div>
@@ -143,7 +140,7 @@ export default function Home() {
 
         {/* Stream Results & Download Controls */}
         {streamData && selectedVariant && (
-          <div className="flex flex-col gap-8 animate-fadeIn">
+          <div className="flex flex-col gap-6">
             {/* Stream Info & Resolution Picker */}
             <StreamDetails
               data={streamData}
@@ -162,26 +159,25 @@ export default function Home() {
 
         {/* Welcome Empty State */}
         {!isLoading && !streamData && !error && (
-          <div className="w-full glass-panel rounded-2xl p-12 text-center border border-slate-800 my-8">
-            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto mb-4">
-              <Film className="w-8 h-8" />
+          <div className="w-full bg-zinc-900 rounded-xl p-10 text-center border border-zinc-800 my-6">
+            <div className="w-12 h-12 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-400 flex items-center justify-center mx-auto mb-3">
+              <Film className="w-6 h-6 text-indigo-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-100 mb-2">
-              Siap Mengurai Stream IDLIX Tanpa Python
+            <h3 className="text-base font-semibold text-zinc-100 mb-1">
+              IDLIX Stream Extractor & Downloader
             </h3>
-            <p className="text-sm text-slate-400 max-w-xl mx-auto mb-6">
-              Masukkan URL IDLIX, Manual GateToken, atau Direct MajorPlay M3U8 URL pada form di atas. Aplikasi ini akan otomatis memproses Gate Token, membuka kunci M3U8, menyediakan player preview, dan pengunduh segmen multi-thread.
+            <p className="text-xs text-zinc-400 max-w-md mx-auto mb-4">
+              Tempel URL IDLIX, Manual GateToken, atau Direct MajorPlay M3U8 URL di atas untuk mengurai stream, memutar preview video, dan mengunduh MP4 secara langsung.
             </p>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
-              Direct Node.js API + Stealth Bypass + In-browser Parallel Downloader
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-950 border border-zinc-800 text-[11px] font-mono text-zinc-400">
+              Pure TypeScript Engine — Vercel & Cross-Platform Ready
             </div>
           </div>
         )}
       </main>
 
-      <footer className="w-full border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
-        <p>RevIDLIX Web Edition — Powered by Next.js & TypeScript</p>
+      <footer className="w-full border-t border-zinc-800/80 py-4 text-center text-xs font-mono text-zinc-500">
+        <p>RevIDLIX Web — Minimalist Flat Design Edition</p>
       </footer>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
-import { Play, Pause, Volume2, VolumeX, Maximize, Tv } from "lucide-react";
+import { Volume2, VolumeX, Maximize, Tv } from "lucide-react";
 import { StreamVariant } from "@/lib/idlix-gate";
 
 interface VideoPlayerProps {
@@ -66,17 +66,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ variant, title }) => {
     };
   }, [variant]);
 
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
@@ -93,39 +82,39 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ variant, title }) => {
   };
 
   return (
-    <div className="w-full glass-panel rounded-2xl p-6 mb-8 border border-slate-800">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-          <Tv className="w-5 h-5 text-cyan-400" />
+    <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+          <Tv className="w-4 h-4 text-indigo-400" />
           Live Stream Player Preview
-          <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-xs font-mono">
+          <span className="px-2 py-0.5 rounded bg-zinc-950 text-zinc-300 text-[11px] font-mono border border-zinc-800">
             {variant.height}
           </span>
         </h3>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={toggleMute}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="p-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition"
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
+            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-zinc-400" />}
           </button>
           <button
             type="button"
             onClick={handleFullscreen}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="p-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition"
           >
             <Maximize className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="relative w-full aspect-video rounded-xl bg-slate-950 overflow-hidden border border-slate-800 flex items-center justify-center">
+      <div className="relative w-full aspect-video rounded-lg bg-zinc-950 overflow-hidden border border-zinc-800 flex items-center justify-center">
         {error ? (
-          <div className="text-center p-6 text-rose-400 text-sm">
+          <div className="text-center p-6 text-rose-400 text-xs font-mono">
             <p>{error}</p>
-            <p className="text-xs text-slate-500 mt-1">Gunakan tombol download untuk mengunduh langsung.</p>
+            <p className="text-zinc-500 mt-1">Gunakan pengunduh segmen di bawah untuk mengunduh file MP4 secara langsung.</p>
           </div>
         ) : (
           <video

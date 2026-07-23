@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Lock, ShieldCheck, Key, RefreshCw, CheckCircle2 } from "lucide-react";
+import React from "react";
+import { Lock, RefreshCw, CheckCircle2 } from "lucide-react";
 
 interface GateCountdownProps {
   currentStep: number;
@@ -11,38 +11,36 @@ interface GateCountdownProps {
 export const GateCountdown: React.FC<GateCountdownProps> = ({ currentStep, stepMessage }) => {
   const steps = [
     { num: 1, label: "UUID Resolution" },
-    { num: 2, label: "View Analytics Track" },
+    { num: 2, label: "View Analytics" },
     { num: 3, label: "Play-Info Request" },
     { num: 4, label: "Gate Unlock Countdown" },
     { num: 5, label: "Session Claim JWT" },
-    { num: 6, label: "MajorPlay Stream Redeem" },
+    { num: 6, label: "Stream Redeem" },
   ];
 
   return (
-    <div className="w-full glass-panel-glow rounded-2xl p-6 mb-8 border border-cyan-500/30">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 animate-pulse-glow">
-            <Lock className="w-5 h-5" />
+    <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800/80">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center text-indigo-400">
+            <Lock className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              IDLIX Gate Token Protocol
-              <span className="px-2 py-0.5 rounded-full text-xs bg-cyan-500/20 text-cyan-300 font-mono">
+            <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+              IDLIX Gate Protocol
+              <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-zinc-950 text-zinc-400 border border-zinc-800">
                 Step {currentStep} of 6
               </span>
             </h3>
-            <p className="text-xs text-slate-400">{stepMessage}</p>
+            <p className="text-xs text-zinc-400">{stepMessage}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-5 h-5 text-cyan-400 animate-spin" />
-        </div>
+        <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
       </div>
 
-      {/* Progress Line & Nodes */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+      {/* Steps Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
         {steps.map((s) => {
           const isDone = s.num < currentStep;
           const isCurrent = s.num === currentStep;
@@ -50,25 +48,25 @@ export const GateCountdown: React.FC<GateCountdownProps> = ({ currentStep, stepM
           return (
             <div
               key={s.num}
-              className={`flex flex-col p-3 rounded-xl border transition duration-300 ${
+              className={`p-2.5 rounded-lg border text-xs transition ${
                 isDone
-                  ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                  ? "bg-zinc-950 border-emerald-500/30 text-emerald-400"
                   : isCurrent
-                  ? "bg-cyan-950/40 border-cyan-500/50 text-cyan-300 shadow-lg shadow-cyan-500/10"
-                  : "bg-slate-900/40 border-slate-800 text-slate-500"
+                  ? "bg-zinc-950 border-indigo-500/50 text-indigo-300"
+                  : "bg-zinc-950/40 border-zinc-800/60 text-zinc-600"
               }`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-mono font-bold">0{s.num}</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-mono text-[10px] font-semibold opacity-70">0{s.num}</span>
                 {isDone ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 ) : isCurrent ? (
-                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                 ) : (
-                  <div className="w-2 h-2 rounded-full bg-slate-700" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
                 )}
               </div>
-              <span className="text-xs font-medium leading-tight">{s.label}</span>
+              <span className="font-medium text-[11px] leading-tight block">{s.label}</span>
             </div>
           );
         })}
