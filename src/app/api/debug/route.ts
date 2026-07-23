@@ -39,6 +39,23 @@ export async function GET(req: NextRequest) {
   const log: any[] = [];
 
   try {
+    // Debug step: Test Worker /resolve endpoint
+    const targetUrl = `https://idlix.to/movie/${slug}/`;
+    const resolveUrl = `${CF_WORKER}/resolve?url=${encodeURIComponent(targetUrl)}`;
+    log.push({ step: "worker_resolve_start", resolveUrl });
+    try {
+      const res = await fetch(resolveUrl);
+      const text = await res.text();
+      log.push({
+        step: "worker_resolve_result",
+        status: res.status,
+        ok: res.ok,
+        preview: text.slice(0, 500)
+      });
+    } catch (e: any) {
+      log.push({ step: "worker_resolve_error", message: e.message });
+    }
+
     // Step 1: UUID
     const step1 = await wfetch(`${Z2}/api/movies/${slug}`);
     const uuid = step1.data?.id;
