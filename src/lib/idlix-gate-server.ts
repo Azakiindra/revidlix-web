@@ -1,5 +1,9 @@
-import { gotScraping } from "got-scraping";
-import { CookieJar } from "tough-cookie";
+/**
+ * IDLIX Gate Server Engine
+ * 100% Pure Node.js built-in fetch (no got-scraping, no curl, no Python needed)
+ * Works on Vercel, local dev, any Node 18+ environment
+ */
+
 import {
   BASE_URL,
   DEFAULT_UA,
@@ -9,58 +13,145 @@ import {
   parseVariantsFromMaster,
 } from "./idlix-gate";
 
-function createHttpClient() {
-  const cookieJar = new CookieJar();
-  return gotScraping.extend({
-    cookieJar,
-    headers: {
-      "User-Agent": DEFAULT_UA,
-      "Accept": "application/json, text/plain, */*",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Origin": BASE_URL,
-      "Referer": `${BASE_URL}/`,
-    },
-    timeout: {
-      request: 25000,
-    },
-    retry: {
-      limit: 1,
-    },
-    throwHttpErrors: false,
-  });
-}
+const MAJORPLAY_BASE = "https://e2e.majorplay.net";
 
-async function safeJson<T = any>(promise: Promise<any>): Promise<T | null> {
-  try {
-    const res = await promise;
-    if (!res || !res.body) return null;
-    if (typeof res.body === "object") return res.body as T;
-    if (typeof res.body === "string") {
-      const trimmed = res.body.trim();
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-        return JSON.parse(trimmed) as T;
+// Shared cookie store (per-request, simple string map)
+function makeFetcher() {
+  const cookies: Record<string, string> = {};
+
+  function buildCookieHeader(): string {
+    return Object.entries(cookies)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("; ");
+  }
+
+  function saveCookies(setCookieHeader: string | null) {
+    if (!setCookieHeader) return;
+    const parts = setCookieHeader.split(",");
+    for (const part of parts) {
+      const token = part.trim().split(";")[0].trim();
+      const eqIdx = token.indexOf("=");
+      if (eqIdx > 0) {
+        const key = token.slice(0, eqIdx).trim();
+        const val = token.slice(eqIdx + 1).trim();
+        if (key) cookies[key] = val;
       }
     }
-    return null;
-  } catch (err: any) {
-    console.warn("[safeJson Parse Warning]:", err.message);
-    return null;
   }
+
+  async function apiFetch(
+    url: string,
+    options: {
+      method?: "GET" | "POST";
+      body?: string;
+      referer?: string;
+      contentType?: string;
+      origin?: string;
+    } = {}
+  ): Promise<{ ok: boolean; status: number; text: string }> {
+    const {
+      method = "GET",
+      body,
+      referer = `${BASE_URL}/`,
+      contentType = "application/json",
+      origin = BASE_URL,
+    } = options;
+
+    const headers: Record<string, string> = {
+      "User-Agent": DEFAULT_UA,
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9",
+      Origin: origin,
+      Referer: referer,
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin",
+    };
+
+    if (body !== undefined) {
+      headers["Content-Type"] = contentType;
+    }
+
+    const cookieStr = buildCookieHeader();
+    if (cookieStr) headers["Cookie"] = cookieStr;
+
+    const res = await fetch(url, {
+      method,
+      headers,
+      body,
+      redirect: "follow",
+      // @ts-ignore — Node 18 supports this signal
+      signal: AbortSignal.timeout(25000),
+    });
+
+    // Save cookies from response
+    const setCookie = res.headers.get("set-cookie");
+    if (setCookie) saveCookies(setCookie);
+
+    const text = await res.text();
+    return { ok: res.ok, status: res.status, text };
+  }
+
+  async function getJson<T = any>(
+    url: string,
+    referer?: string
+  ): Promise<T | null> {
+    const r = await apiFetch(url, { method: "GET", referer });
+    if (!r.ok) return null;
+    const trimmed = r.text.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
+    try {
+      return JSON.parse(trimmed) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async function postJson<T = any>(
+    url: string,
+    payload: unknown,
+    options: { referer?: string; contentType?: string; origin?: string } = {}
+  ): Promise<T | null> {
+    const body =
+      options.contentType === "text/plain"
+        ? JSON.stringify(payload)
+        : JSON.stringify(payload);
+    const r = await apiFetch(url, {
+      method: "POST",
+      body,
+      ...options,
+    });
+    if (!r.ok) return null;
+    const trimmed = r.text.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
+    try {
+      return JSON.parse(trimmed) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  return { getJson, postJson, apiFetch };
 }
 
 export async function fetchM3u8TextServer(url: string): Promise<string | null> {
-  const client = createHttpClient();
   try {
-    const res = await client.get(url);
-    if (res.statusCode >= 200 && res.statusCode < 300 && res.body) {
-      if (!res.body.includes("<title>Just a moment...</title>")) {
-        return res.body;
-      }
-    }
-  } catch (err) {
-    console.error(`[fetchM3u8TextServer Error] ${url}:`, err);
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": DEFAULT_UA,
+        Origin: BASE_URL,
+        Referer: `${BASE_URL}/`,
+      },
+      // @ts-ignore
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (text.includes("<title>Just a moment</title>")) return null;
+    return text;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 export async function resolveDirectM3u8Url(
@@ -69,9 +160,7 @@ export async function resolveDirectM3u8Url(
 ): Promise<StreamDataResult | null> {
   const masterText = await fetchM3u8TextServer(m3u8Url);
   if (!masterText) return null;
-
   const { variants, audioUrl } = parseVariantsFromMaster(masterText, m3u8Url);
-
   return {
     title,
     videoId: null,
@@ -85,22 +174,31 @@ export async function resolveDirectM3u8Url(
   };
 }
 
-export async function executeFullGateFlow(inputUrlOrSlug: string): Promise<StreamDataResult | null> {
+export async function executeFullGateFlow(
+  inputUrlOrSlug: string
+): Promise<StreamDataResult | null> {
   const inputTrim = inputUrlOrSlug.trim();
 
-  // 1. Direct M3U8 URL check
-  if (inputTrim.startsWith("http") && (inputTrim.includes(".m3u8") || inputTrim.includes("majorplay.net"))) {
-    return await resolveDirectM3u8Url(inputTrim);
+  // 1. Direct M3U8 URL
+  if (
+    inputTrim.startsWith("http") &&
+    (inputTrim.includes(".m3u8") || inputTrim.includes("majorplay.net"))
+  ) {
+    return resolveDirectM3u8Url(inputTrim);
   }
 
-  // 2. Direct GateToken JWT check (valid JWT gate tokens start with "ey" and contain ".")
-  if (inputTrim.startsWith("ey") && inputTrim.includes(".") && inputTrim.length > 50) {
-    return await claimWithManualGateToken(inputTrim);
+  // 2. Direct GateToken JWT
+  if (
+    inputTrim.startsWith("ey") &&
+    inputTrim.includes(".") &&
+    inputTrim.length > 50
+  ) {
+    return claimWithManualGateToken(inputTrim);
   }
 
-  // 3. Full IDLIX URL or Slug Pipeline via 100% Pure JS/TS got-scraping Client
+  // 3. Full IDLIX URL pipeline
   const { slug, contentType, season, episode } = parseIdlixUrl(inputTrim);
-  const client = createHttpClient();
+  const { getJson, postJson } = makeFetcher();
 
   try {
     // Step 1: Resolve UUID
@@ -109,7 +207,7 @@ export async function executeFullGateFlow(inputUrlOrSlug: string): Promise<Strea
       if (!season || !episode) return null;
       const apiUrl = `${BASE_URL}/api/series/${slug}/season/${season}`;
       const referer = `${BASE_URL}/series/${slug}/season/${season}/episode/${episode}`;
-      const epRes = await safeJson(client.get(apiUrl, { headers: { Referer: referer } }));
+      const epRes = await getJson(apiUrl, referer);
       const epObj = (epRes?.season?.episodes || []).find(
         (e: any) => Number(e.episodeNumber) === Number(episode)
       );
@@ -118,71 +216,95 @@ export async function executeFullGateFlow(inputUrlOrSlug: string): Promise<Strea
       const apiPath = contentType === "series" ? "/api/series" : "/api/movies";
       const apiUrl = `${BASE_URL}${apiPath}/${slug}`;
       const referer = `${BASE_URL}/${contentType}/${slug}`;
-      const movRes = await safeJson(client.get(apiUrl, { headers: { Referer: referer } }));
-      uuid = movRes?.id || (movRes?.data || {}).id || null;
+      const movRes = await getJson(apiUrl, referer);
+      uuid = movRes?.id || movRes?.data?.id || null;
     }
 
-    if (!uuid) return null;
+    if (!uuid) {
+      console.error("[executeFullGateFlow] Could not resolve UUID for:", slug);
+      return null;
+    }
 
-    // Step 2: Track View
-    const trackUrl = `${BASE_URL}/api/views/track`;
-    const trackBody = {
-      contentType: contentType === "episode" ? "tv_series" : contentType,
-      contentId: uuid,
-      ...(contentType === "episode" ? { episodeId: uuid } : {}),
-    };
+    // Step 2: Track View (non-fatal)
     try {
-      await client.post(trackUrl, { json: trackBody, headers: { Referer: `${BASE_URL}/${contentType}/` } });
-    } catch {
-      // analytics track failures non-fatal
-    }
+      await postJson(`${BASE_URL}/api/views/track`, {
+        contentType: contentType === "episode" ? "tv_series" : contentType,
+        contentId: uuid,
+        ...(contentType === "episode" ? { episodeId: uuid } : {}),
+      });
+    } catch {}
 
     // Step 3: Get Play Info
     const playInfoType = contentType === "episode" ? "episode" : "movie";
     const playUrl = `${BASE_URL}/api/watch/play-info/${playInfoType}/${uuid}`;
-    const playInfo = await safeJson(client.get(playUrl, { headers: { Referer: `${BASE_URL}/${contentType}/` } }));
+    const playInfo = await getJson(playUrl, `${BASE_URL}/${contentType}/`);
 
-    if (!playInfo || playInfo.kind !== "gate" || !playInfo.gateToken) return null;
-
-    // Step 4: Wait Countdown
-    const waitMs = Math.min(Math.max(0, playInfo.unlockAt - playInfo.serverNow + 500), 20000);
-    if (waitMs > 0) {
-      await new Promise((r) => setTimeout(r, waitMs));
+    if (!playInfo || playInfo.kind !== "gate" || !playInfo.gateToken) {
+      console.error("[executeFullGateFlow] No valid gateToken in play-info");
+      return null;
     }
 
+    // Step 4: Wait Countdown
+    const waitMs = Math.min(
+      Math.max(0, (playInfo.unlockAt ?? 0) - (playInfo.serverNow ?? 0) + 500),
+      20000
+    );
+    if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+
     // Step 5: Claim Session
-    const claimUrl = `${BASE_URL}/api/watch/session/claim`;
-    const claimData = await safeJson(
-      client.post(claimUrl, { json: { gateToken: playInfo.gateToken }, headers: { Referer: `${BASE_URL}/${contentType}/` } })
+    const claimData = await postJson(
+      `${BASE_URL}/api/watch/session/claim`,
+      { gateToken: playInfo.gateToken },
+      { referer: `${BASE_URL}/${contentType}/` }
     );
 
-    if (!claimData || !claimData.claim || !claimData.redeemUrl) return null;
+    if (!claimData || !claimData.claim || !claimData.redeemUrl) {
+      console.error("[executeFullGateFlow] Session claim failed");
+      return null;
+    }
 
-    // Step 6: Redeem Claim (majorplay.net)
-    const redeemUrl = claimData.redeemUrl;
-    const playData = await safeJson(
-      client.post(redeemUrl, {
-        body: JSON.stringify({ claim: claimData.claim }),
-        headers: { "Content-Type": "text/plain", Origin: BASE_URL, Referer: `${BASE_URL}/` },
-      })
-    );
+    // Step 6: Redeem Claim
+    const { getJson: _g, postJson: _p, apiFetch } = makeFetcher();
+    const redeemRes = await apiFetch(claimData.redeemUrl, {
+      method: "POST",
+      body: JSON.stringify({ claim: claimData.claim }),
+      contentType: "text/plain",
+      origin: BASE_URL,
+      referer: `${BASE_URL}/`,
+    });
 
-    if (!playData || playData.code !== "ok" || !playData.url) return null;
+    if (!redeemRes.ok) {
+      console.error("[executeFullGateFlow] Redeem failed:", redeemRes.status);
+      return null;
+    }
 
-    const masterUrl = playData.url;
+    let playData: any;
+    try {
+      playData = JSON.parse(redeemRes.text);
+    } catch {
+      console.error("[executeFullGateFlow] Redeem response not JSON");
+      return null;
+    }
+
+    if (playData.code !== "ok" || !playData.url) return null;
+
+    const masterUrl: string = playData.url;
 
     // Fetch Master M3U8
-    const masterRes = await client.get(masterUrl);
-    if (!masterRes.body || masterRes.body.includes("<title>Just a moment...</title>")) return null;
+    const masterText = await fetchM3u8TextServer(masterUrl);
+    if (!masterText) {
+      console.error("[executeFullGateFlow] M3U8 fetch failed or CF-blocked");
+      return null;
+    }
 
-    const masterText = masterRes.body;
     const { variants, audioUrl } = parseVariantsFromMaster(masterText, masterUrl);
-
-    const subtitles: SubtitleTrack[] = (playData.subtitles || []).map((s: any) => ({
-      lang: s.lang || "unknown",
-      label: s.label || "Subtitle",
-      url: s.path,
-    }));
+    const subtitles: SubtitleTrack[] = (playData.subtitles || []).map(
+      (s: any) => ({
+        lang: s.lang || "und",
+        label: s.label || "Subtitle",
+        url: s.path,
+      })
+    );
 
     return {
       title: claimData.title || slug,
@@ -196,7 +318,7 @@ export async function executeFullGateFlow(inputUrlOrSlug: string): Promise<Strea
       subtitles,
     };
   } catch (err: any) {
-    console.error("[executeFullGateFlow Pure JS Error]:", err);
+    console.error("[executeFullGateFlow Error]:", err?.message || err);
     return null;
   }
 }
@@ -205,37 +327,48 @@ export async function claimWithManualGateToken(
   gateToken: string,
   title: string = "Manual Gate Claim"
 ): Promise<StreamDataResult | null> {
-  const client = createHttpClient();
+  const { postJson, apiFetch } = makeFetcher();
+
   try {
-    const claimUrl = `${BASE_URL}/api/watch/session/claim`;
-    const claimData = await safeJson(
-      client.post(claimUrl, { json: { gateToken }, headers: { Referer: `${BASE_URL}/movie/` } })
+    const claimData = await postJson(
+      `${BASE_URL}/api/watch/session/claim`,
+      { gateToken },
+      { referer: `${BASE_URL}/movie/` }
     );
 
     if (!claimData || !claimData.claim || !claimData.redeemUrl) return null;
 
-    const redeemUrl = claimData.redeemUrl;
-    const playData = await safeJson(
-      client.post(redeemUrl, {
-        body: JSON.stringify({ claim: claimData.claim }),
-        headers: { "Content-Type": "text/plain", Origin: BASE_URL, Referer: `${BASE_URL}/` },
+    const redeemRes = await apiFetch(claimData.redeemUrl, {
+      method: "POST",
+      body: JSON.stringify({ claim: claimData.claim }),
+      contentType: "text/plain",
+      origin: BASE_URL,
+      referer: `${BASE_URL}/`,
+    });
+
+    if (!redeemRes.ok) return null;
+
+    let playData: any;
+    try {
+      playData = JSON.parse(redeemRes.text);
+    } catch {
+      return null;
+    }
+
+    if (playData.code !== "ok" || !playData.url) return null;
+
+    const masterUrl: string = playData.url;
+    const masterText = await fetchM3u8TextServer(masterUrl);
+    if (!masterText) return null;
+
+    const { variants, audioUrl } = parseVariantsFromMaster(masterText, masterUrl);
+    const subtitles: SubtitleTrack[] = (playData.subtitles || []).map(
+      (s: any) => ({
+        lang: s.lang || "und",
+        label: s.label || "Subtitle",
+        url: s.path,
       })
     );
-
-    if (!playData || playData.code !== "ok" || !playData.url) return null;
-
-    const masterUrl = playData.url;
-    const masterRes = await client.get(masterUrl);
-    if (!masterRes.body || masterRes.body.includes("<title>Just a moment...</title>")) return null;
-
-    const masterText = masterRes.body;
-    const { variants, audioUrl } = parseVariantsFromMaster(masterText, masterUrl);
-
-    const subtitles: SubtitleTrack[] = (playData.subtitles || []).map((s: any) => ({
-      lang: s.lang || "unknown",
-      label: s.label || "Subtitle",
-      url: s.path,
-    }));
 
     return {
       title: claimData.title || title,
@@ -249,7 +382,7 @@ export async function claimWithManualGateToken(
       subtitles,
     };
   } catch (err: any) {
-    console.error("[claimWithManualGateToken Pure JS Error]:", err);
+    console.error("[claimWithManualGateToken Error]:", err?.message || err);
     return null;
   }
 }

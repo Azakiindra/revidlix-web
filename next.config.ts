@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["got-scraping", "header-generator", "tough-cookie"],
   eslint: {
     ignoreDuringBuilds: true,
   },
