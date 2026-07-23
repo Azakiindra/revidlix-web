@@ -60,12 +60,20 @@ function makeFetcher() {
     const headers: Record<string, string> = {
       "User-Agent": DEFAULT_UA,
       Accept: "application/json, text/plain, */*",
-      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Language": "en-US,en;q=0.9,id;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
       Origin: origin,
       Referer: referer,
+      "Sec-Ch-Ua":
+        '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      "Sec-Ch-Ua-Mobile": "?1",
+      "Sec-Ch-Ua-Platform": '"Android"',
       "Sec-Fetch-Dest": "empty",
       "Sec-Fetch-Mode": "cors",
       "Sec-Fetch-Site": "same-origin",
+      "X-Requested-With": "XMLHttpRequest",
     };
 
     if (body !== undefined) {
