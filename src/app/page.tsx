@@ -8,6 +8,7 @@ import { StreamDetails } from "@/components/StreamDetails";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Downloader } from "@/components/Downloader";
 import { StreamDataResult, StreamVariant } from "@/lib/idlix-gate";
+import { executeClientSideGateFlow } from "@/lib/client-gate-resolver";
 import { AlertCircle, Film, ShieldAlert, Key, Terminal } from "lucide-react";
 
 export default function Home() {
@@ -42,6 +43,8 @@ export default function Home() {
       });
     }, 2500);
 
+    // 1. Try Server-side API first
+    let isResolved = false;
     try {
       const res = await fetch("/api/gate/resolve", {
         method: "POST",
@@ -49,28 +52,46 @@ export default function Home() {
         body: JSON.stringify({ url }),
       });
 
+      if (res.ok) {
+        clearInterval(stepInterval);
+        setStep(5);
+        setStepMessage("Claiming session JWT...");
+        const data: StreamDataResult = await res.json();
+        setStep(6);
+        setStepMessage("Stream resolved successfully!");
+        setStreamData(data);
+        if (data.variants && data.variants.length > 0) {
+          setSelectedVariant(data.variants[0]);
+        }
+        isResolved = true;
+      }
+    } catch {
+      // Server API failed, proceed to Browser Client-side engine
+    }
+
+    if (isResolved) {
+      setIsLoading(false);
+      return;
+    }
+
+    // 2. Dual Engine Fallback: Run Browser Client Engine directly in user's browser
+    setStepMessage("Running Browser Client Engine for Cloudflare Bypass...");
+    try {
+      const clientData = await executeClientSideGateFlow(url, (stepNum, msg) => {
+        setStep(stepNum);
+        setStepMessage(msg);
+      });
+
       clearInterval(stepInterval);
 
-      if (!res.ok) {
-        const errData = await res.json();
-        const msg = errData.error || "Gagal memproses stream dari IDLIX.";
-        if (res.status === 404 || msg.toLowerCase().includes("cloud")) {
-          setIsCloudflareError(true);
-        }
-        throw new Error(msg);
-      }
-
-      setStep(5);
-      setStepMessage("Claiming session JWT...");
-
-      const data: StreamDataResult = await res.json();
-
-      setStep(6);
-      setStepMessage("Stream resolved successfully!");
-
-      setStreamData(data);
-      if (data.variants && data.variants.length > 0) {
-        setSelectedVariant(data.variants[0]);
+      if (clientData && clientData.variants && clientData.variants.length > 0) {
+        setStep(6);
+        setStepMessage("Stream resolved via Browser Engine!");
+        setStreamData(clientData);
+        setSelectedVariant(clientData.variants[0]);
+      } else {
+        setIsCloudflareError(true);
+        throw new Error("Gagal memproses stream dari IDLIX. Pastikan URL film/series valid.");
       }
     } catch (err: any) {
       clearInterval(stepInterval);
@@ -126,7 +147,7 @@ export default function Home() {
 
                   <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
                     <span className="font-semibold text-zinc-200 flex items-center gap-1.5 mb-1 text-xs">
-                      <Terminal className="w-3.5 h-3.5 text-indigo-400" /> Cek URL
+                      <Terminal className="w-3.5 h-3.5 text-indigo-400" /> Direct M3U8
                     </span>
                     <p className="text-zinc-400 text-[11px]">
                       Pastikan URL film/series valid atau coba tempel langsung link stream `.m3u8` di tab Direct M3U8.
@@ -170,7 +191,7 @@ export default function Home() {
               Tempel URL IDLIX, Manual GateToken, atau Direct MajorPlay M3U8 URL di atas untuk mengurai stream, memutar preview video, dan mengunduh MP4 secara langsung.
             </p>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-950 border border-zinc-800 text-[11px] font-mono text-zinc-400">
-              Pure TypeScript Engine — Vercel & Cross-Platform Ready
+              Dual Engine (Server API + Browser Client Engine) — 100% Vercel Ready
             </div>
           </div>
         )}
