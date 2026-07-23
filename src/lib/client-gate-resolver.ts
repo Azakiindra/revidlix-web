@@ -1,7 +1,7 @@
 /**
- * Client-Side Gate Resolver (Browser Engine)
- * All requests use same-origin /z2/ and /mp/ proxy paths via Vercel Edge Rewrites
- * → No CORS issues, no Cloudflare IP blocking
+ * Client-Side Gate Resolver
+ * Uses NEXT_PUBLIC_CF_PROXY_URL (Cloudflare Worker) when available,
+ * otherwise falls back to /z2/ /mp/ Vercel rewrite paths.
  */
 
 import {
@@ -15,8 +15,20 @@ import {
 const Z2_BASE = "https://z2.idlixku.com";
 const MP_BASE = "https://e2e.majorplay.net";
 
-/** Convert full z2/mp URLs to same-origin proxy paths */
+// CF_PROXY_URL = e.g. "https://my-worker.workers.dev"
+// Set as NEXT_PUBLIC_CF_PROXY_URL in Vercel environment variables
+const CF_PROXY =
+  typeof window !== "undefined"
+    ? (process.env.NEXT_PUBLIC_CF_PROXY_URL || "").replace(/\/$/, "")
+    : "";
+
 function toProxy(url: string): string {
+  if (CF_PROXY) {
+    if (url.startsWith(Z2_BASE)) return `${CF_PROXY}/z2${url.slice(Z2_BASE.length)}`;
+    if (url.startsWith(MP_BASE)) return `${CF_PROXY}/mp${url.slice(MP_BASE.length)}`;
+    return url;
+  }
+  // Fallback: Vercel edge rewrite paths (same-origin)
   if (url.startsWith(Z2_BASE)) return url.replace(Z2_BASE, "/z2");
   if (url.startsWith(MP_BASE)) return url.replace(MP_BASE, "/mp");
   return url;
@@ -42,22 +54,19 @@ async function proxyFetch(
     const text = await res.text();
     let data: any = null;
 
-    if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
+    const trimmed = text.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
       try {
-        data = JSON.parse(text);
+        data = JSON.parse(trimmed);
       } catch {}
     }
 
     const isChallenge =
       text.includes("Just a moment") ||
-      text.includes("cf-browser-verification");
+      text.includes("cf-browser-verification") ||
+      text.includes("challenge-platform");
 
-    return {
-      ok: res.ok && !isChallenge,
-      status: res.status,
-      text,
-      data,
-    };
+    return { ok: res.ok && !isChallenge, status: res.status, text, data };
   } catch (err: any) {
     console.warn(`[proxyFetch error] ${proxied}:`, err.message);
     return { ok: false, status: 0, text: err.message || "", data: null };
@@ -71,33 +80,42 @@ export async function executeClientSideGateFlow(
   const inputTrim = inputUrlOrSlug.trim();
   const { slug, contentType, season, episode } = parseIdlixUrl(inputTrim);
 
+  const engineLabel = CF_PROXY ? "CF Worker" : "Edge Rewrite";
+
   // Step 1: Resolve UUID
-  if (onProgress) onProgress(1, "Resolving UUID via Edge Proxy...");
+  if (onProgress) onProgress(1, `Resolving UUID via ${engineLabel}...`);
   let uuid: string | null = null;
 
   if (contentType === "episode") {
     if (!season || !episode) return null;
     const apiUrl = `${Z2_BASE}/api/series/${slug}/season/${season}`;
     const epRes = await proxyFetch(apiUrl, {
-      headers: { Referer: `${BASE_URL}/series/${slug}/season/${season}/episode/${episode}` },
+      headers: {
+        Referer: `${BASE_URL}/series/${slug}/season/${season}/episode/${episode}`,
+      },
     });
-    if (!epRes.data?.season) return null;
+    if (!epRes.data?.season) {
+      console.error("[clientEngine] Season data missing:", epRes);
+      return null;
+    }
     const epObj = (epRes.data.season.episodes || []).find(
       (e: any) => Number(e.episodeNumber) === Number(episode)
     );
     uuid = epObj?.id ?? null;
   } else {
     const apiPath = contentType === "series" ? "/api/series" : "/api/movies";
-    const apiUrl = `${Z2_BASE}${apiPath}/${slug}`;
-    const movRes = await proxyFetch(apiUrl, {
+    const movRes = await proxyFetch(`${Z2_BASE}${apiPath}/${slug}`, {
       headers: { Referer: `${BASE_URL}/${contentType}/${slug}` },
     });
-    if (!movRes.data) return null;
+    if (!movRes.data) {
+      console.error("[clientEngine] Movie data missing:", movRes);
+      return null;
+    }
     uuid = movRes.data.id || movRes.data.data?.id || null;
   }
 
   if (!uuid) {
-    console.error("[clientEngine] UUID not resolved for slug:", slug);
+    console.error("[clientEngine] UUID not resolved for:", slug);
     return null;
   }
 
@@ -125,7 +143,7 @@ export async function executeClientSideGateFlow(
   );
 
   if (!infoRes.data || infoRes.data.kind !== "gate" || !infoRes.data.gateToken) {
-    console.error("[clientEngine] No valid gateToken:", infoRes.data);
+    console.error("[clientEngine] No gateToken in play-info:", infoRes.data);
     return null;
   }
 
@@ -177,7 +195,7 @@ export async function executeClientSideGateFlow(
   const playData = playRes.data;
   const masterUrl: string = playData.url;
 
-  // Fetch Master M3U8 via proxy
+  // Fetch M3U8 via server proxy
   const m3u8Res = await fetch(
     `/api/proxy/m3u8?url=${encodeURIComponent(masterUrl)}`
   );

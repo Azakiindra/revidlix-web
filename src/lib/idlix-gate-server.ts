@@ -13,7 +13,20 @@ import {
   parseVariantsFromMaster,
 } from "./idlix-gate";
 
-const MAJORPLAY_BASE = "https://e2e.majorplay.net";
+const Z2_BASE = "https://z2.idlixku.com";
+const MP_BASE = "https://e2e.majorplay.net";
+
+// If CF_PROXY_URL is set (e.g. https://my-worker.workers.dev),
+// route all z2/mp requests through the Cloudflare Worker
+const CF_PROXY = (process.env.CF_PROXY_URL || "").replace(/\/$/, "");
+
+function toProxyUrl(url: string): string {
+  if (CF_PROXY) {
+    if (url.startsWith(Z2_BASE)) return `${CF_PROXY}/z2${url.slice(Z2_BASE.length)}`;
+    if (url.startsWith(MP_BASE)) return `${CF_PROXY}/mp${url.slice(MP_BASE.length)}`;
+  }
+  return url; // direct (may fail on Vercel but keeps working locally)
+}
 
 // Shared cookie store (per-request, simple string map)
 function makeFetcher() {
@@ -83,7 +96,7 @@ function makeFetcher() {
     const cookieStr = buildCookieHeader();
     if (cookieStr) headers["Cookie"] = cookieStr;
 
-    const res = await fetch(url, {
+    const res = await fetch(toProxyUrl(url), {
       method,
       headers,
       body,
