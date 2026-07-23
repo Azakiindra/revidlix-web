@@ -43,8 +43,39 @@ export default function Home() {
       });
     }, 2500);
 
-    // 1. Try Server-side API first
     let isResolved = false;
+
+    // 1. Try Vercel Python Serverless Function first (/api/resolve)
+    try {
+      const pyRes = await fetch("/api/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      if (pyRes.ok) {
+        clearInterval(stepInterval);
+        setStep(5);
+        setStepMessage("Claiming session JWT...");
+        const data: StreamDataResult = await pyRes.json();
+        setStep(6);
+        setStepMessage("Stream resolved via Python Engine!");
+        setStreamData(data);
+        if (data.variants && data.variants.length > 0) {
+          setSelectedVariant(data.variants[0]);
+        }
+        isResolved = true;
+      }
+    } catch {
+      // Fallthrough to Node / Browser Engine
+    }
+
+    if (isResolved) {
+      setIsLoading(false);
+      return;
+    }
+
+    // 2. Try Node.js API (/api/gate/resolve)
     try {
       const res = await fetch("/api/gate/resolve", {
         method: "POST",
@@ -66,7 +97,7 @@ export default function Home() {
         isResolved = true;
       }
     } catch {
-      // Server API failed, proceed to Browser Client-side engine
+      // Fallthrough to Browser Client Engine
     }
 
     if (isResolved) {
@@ -74,8 +105,8 @@ export default function Home() {
       return;
     }
 
-    // 2. Dual Engine Fallback: Run Browser Client Engine directly in user's browser
-    setStepMessage("Running Browser Client Engine for Cloudflare Bypass...");
+    // 3. Fallback: Run Browser Client Engine directly in user's browser
+    setStepMessage("Running Browser Engine for Cloudflare Bypass...");
     try {
       const clientData = await executeClientSideGateFlow(url, (stepNum, msg) => {
         setStep(stepNum);
@@ -191,7 +222,7 @@ export default function Home() {
               Tempel URL IDLIX, Manual GateToken, atau Direct MajorPlay M3U8 URL di atas untuk mengurai stream, memutar preview video, dan mengunduh MP4 secara langsung.
             </p>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-950 border border-zinc-800 text-[11px] font-mono text-zinc-400">
-              Dual Engine (Server API + Browser Client Engine) — 100% Vercel Ready
+              Vercel Native Python Engine (requests.Session) + Next.js — 100% Ready
             </div>
           </div>
         )}
