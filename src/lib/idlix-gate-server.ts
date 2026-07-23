@@ -218,7 +218,25 @@ export async function executeFullGateFlow(
     return claimWithManualGateToken(inputTrim);
   }
 
-  // 3. Full IDLIX URL pipeline
+  // 3. Cloudflare Worker resolver (highly stable session binding)
+  if (CF_PROXY) {
+    try {
+      console.log(`[executeFullGateFlow] Resolving via Worker: ${CF_PROXY}/resolve?url=${encodeURIComponent(inputTrim)}`);
+      const res = await fetch(`${CF_PROXY}/resolve?url=${encodeURIComponent(inputTrim)}`, {
+        // @ts-ignore
+        signal: AbortSignal.timeout(25000),
+      });
+      if (res.ok) {
+        console.log(`[executeFullGateFlow] Worker resolve succeeded!`);
+        return await res.json() as StreamDataResult;
+      }
+      console.warn(`[executeFullGateFlow] Worker resolve failed with status: ${res.status}`);
+    } catch (err: any) {
+      console.warn(`[executeFullGateFlow] Worker resolve exception:`, err.message);
+    }
+  }
+
+  // 4. Fallback: Full IDLIX URL pipeline (direct/proxy multi-step)
   const { slug, contentType, season, episode } = parseIdlixUrl(inputTrim);
   const { getJson, postJson } = makeFetcher();
 

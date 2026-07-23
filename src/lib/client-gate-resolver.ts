@@ -80,6 +80,41 @@ export async function executeClientSideGateFlow(
   onProgress?: (step: number, message: string) => void
 ): Promise<StreamDataResult | null> {
   const inputTrim = inputUrlOrSlug.trim();
+
+  // 1. If Cloudflare Worker is available, execute the entire flow on the Worker Edge (extremely robust)
+  if (CF_PROXY) {
+    if (onProgress) onProgress(1, "Connecting to Cloudflare Edge resolver...");
+
+    let step = 1;
+    const progressTimer = setInterval(() => {
+      step++;
+      if (step === 2) {
+        if (onProgress) onProgress(2, "Bypassing Cloudflare challenge...");
+      } else if (step === 3) {
+        if (onProgress) onProgress(3, "Waiting unlock countdown (15s)...");
+      } else if (step === 4) {
+        if (onProgress) onProgress(4, "Claiming playback session...");
+      } else if (step === 5) {
+        if (onProgress) onProgress(5, "Redeeming stream parameters...");
+      }
+    }, 2800);
+
+    try {
+      console.log(`[clientEngine] Resolving via Worker: ${CF_PROXY}/resolve?url=${encodeURIComponent(inputTrim)}`);
+      const res = await fetch(`${CF_PROXY}/resolve?url=${encodeURIComponent(inputTrim)}`);
+      clearInterval(progressTimer);
+      if (res.ok) {
+        if (onProgress) onProgress(6, "Stream resolved successfully!");
+        return await res.json() as StreamDataResult;
+      }
+      console.warn(`[clientEngine] Worker resolve returned status ${res.status}`);
+    } catch (err: any) {
+      clearInterval(progressTimer);
+      console.warn("[clientEngine] Worker resolve failed:", err.message);
+    }
+  }
+
+  // 2. Fallback: Local Client-side step-by-step resolve
   const { slug, contentType, season, episode } = parseIdlixUrl(inputTrim);
 
   const engineLabel = CF_PROXY ? "CF Worker" : "Edge Rewrite";
